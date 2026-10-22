@@ -11,6 +11,9 @@
         </div>
         <span class="admin-date"><span aria-hidden="true">◷</span> {{ now()->format('d/m/Y') }}</span>
     </section>
+    @if (session('success'))
+        <div class="notice notice-success" role="status">{{ session('success') }}</div>
+    @endif
 
     <section class="admin-banner">
         <div class="banner-copy">
@@ -64,7 +67,10 @@
                     <span class="card-kicker">YANG TERSEDIA</span>
                     <h2>Menu kantin</h2>
                 </div>
-                <span class="panel-count">{{ $menuCount }} menu</span>
+                <div class="panel-actions">
+                    <span class="panel-count">{{ $menuCount }} menu</span>
+                    <a class="manage-link" href="{{ route('admin.menus') }}">Kelola ↗</a>
+                </div>
             </div>
             @if ($menus->isNotEmpty())
                 <div class="menu-list">
@@ -114,6 +120,17 @@
                                 <small class="status-chip {{ str_contains(strtolower($status), 'menunggu') ? 'status-waiting' : (str_contains(strtolower($status), 'selesai') ? 'status-done' : 'status-progress') }}">{{ $status }}</small>
                             </span>
                         </div>
+                        <form class="status-update-form" method="POST" action="{{ route('admin.orders.status', $order->id) }}">
+                            @csrf
+                            @method('PATCH')
+                            <label class="sr-only" for="status_{{ $order->id }}">Status pesanan #{{ $order->id }}</label>
+                            <select id="status_{{ $order->id }}" name="status">
+                                @foreach (['Menunggu Konfirmasi', 'Sedang Dimasak', 'Siap Diambil', 'Selesai'] as $orderStatus)
+                                    <option value="{{ $orderStatus }}" @selected($status === $orderStatus)>{{ $orderStatus }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit">Perbarui</button>
+                        </form>
                     @endforeach
                 </div>
             @else

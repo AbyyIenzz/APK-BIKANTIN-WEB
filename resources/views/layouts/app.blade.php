@@ -13,6 +13,12 @@
             <span class="brand-mark" aria-hidden="true">B</span>
             <span>bi-kantin<span class="brand-period">.</span></span>
         </a>
+        @if (auth()->user()->role === 'admin')
+        <nav class="admin-nav" aria-label="Navigasi admin">
+            <a href="{{ route('admin.dashboard') }}" @class(['active' => request()->routeIs('admin.dashboard')])>Dashboard</a>
+            <a href="{{ route('admin.menus') }}" @class(['active' => request()->routeIs('admin.menus')])>Menu</a>
+        </nav>
+        @endif
         <div class="topbar-right">
             <span class="user-chip">
                 <span class="user-avatar">{{ strtoupper(substr(auth()->user()->username, 0, 1)) }}</span>

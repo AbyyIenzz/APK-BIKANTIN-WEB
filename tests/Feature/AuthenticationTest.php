@@ -44,6 +44,10 @@ class AuthenticationTest extends TestCase
             ['username' => 'admin_kantin', 'password' => 'admin123', 'role' => 'admin'],
             ['username' => 'budi_siswa', 'password' => '123', 'role' => 'siswa'],
         ]);
+
+        DB::table('menu')->insert([
+            ['nama_menu' => 'Nasi Goreng', 'harga' => 15000, 'kategori' => 'Makanan'],
+        ]);
     }
 
     public function test_student_login_redirects_to_student_dashboard(): void
@@ -94,5 +98,130 @@ class AuthenticationTest extends TestCase
 
         $this->post(route('logout'))->assertRedirect(route('login'));
         $this->assertGuest();
+    }
+
+    public function test_admin_can_create_update_and_delete_unused_menu(): void
+    {
+        $this->post(route('login.store'), [
+            'username' => 'admin_kantin',
+            'password' => 'admin123',
+        ]);
+
+        $this->post(route('admin.menus.store'), [
+            'nama_menu' => 'Es Jeruk',
+            'harga' => 5000,
+            'kategori' => 'Minuman',
+        ])->assertRedirect(route('admin.menus'));
+
+        $menuId = (int) DB::table('menu')->where('nama_menu', 'Es Jeruk')->value('id');
+        $this->assertDatabaseHas('menu', ['id' => $menuId, 'harga' => 5000]);
+
+        $this->put(route('admin.menus.update', $menuId), [
+            'nama_menu' => 'Es Jeruk Segar',
+            'harga' => 6000,
+            'kategori' => 'Minuman',
+        ])->assertRedirect(route('admin.menus'));
+        $this->assertDatabaseHas('menu', ['id' => $menuId, 'nama_menu' => 'Es Jeruk Segar', 'harga' => 6000]);
+
+        $this->delete(route('admin.menus.destroy', $menuId))
+            ->assertRedirect(route('admin.menus'));
+        $this->assertDatabaseMissing('menu', ['id' => $menuId]);
+    }
+
+    public function test_menu_with_existing_orders_cannot_be_deleted(): void
+    {
+        DB::table('pesanan')->insert([
+            'user_id' => 2,
+            'menu_id' => 1,
+            'jumlah' => 1,
+            'total_harga' => 15000,
+            'status' => 'Menunggu Konfirmasi',
+        ]);
+
+        $this->post(route('login.store'), [
+            'username' => 'admin_kantin',
+            'password' => 'admin123',
+        ]);
+
+        $this->from(route('admin.menus'))
+            ->delete(route('admin.menus.destroy', 1))
+            ->assertRedirect(route('admin.menus'))
+            ->assertSessionHasErrors('menu');
+
+        $this->assertDatabaseHas('menu', ['id' => 1]);
+    }
+
+    public function test_admin_can_update_order_status_but_student_cannot(): void
+    {
+        DB::table('pesanan')->insert([
+            'user_id' => 2,
+            'menu_id' => 1,
+            'jumlah' => 1,
+            'total_harga' => 15000,
+            'status' => 'Menunggu Konfirmasi',
+        ]);
+        $orderId = (int) DB::table('pesanan')->value('id');
+
+        $this->post(route('login.store'), [
+            'username' => 'budi_siswa',
+            'password' => '123',
+        ]);
+
+        $this->patch(route('admin.orders.status', $orderId), [
+            'status' => 'Siap Diambil',
+        ])->assertForbidden();
+
+        $this->post(route('logout'));
+        $this->post(route('login.store'), [
+            'username' => 'admin_kantin',
+            'password' => 'admin123',
+        ]);
+
+        $this->patch(route('admin.orders.status', $orderId), [
+            'status' => 'Sedang Dimasak',
+        ])->assertSessionHas('success');
+        $this->assertDatabaseHas('pesanan', ['id' => $orderId, 'status' => 'Sedang Dimasak']);
+    }
+
+    public function test_student_can_add_to_cart_and_checkout_current_menu_price(): void
+    {
+        $this->post(route('login.store'), [
+            'username' => 'budi_siswa',
+            'password' => '123',
+        ]);
+
+        $this->post(route('siswa.cart.add', 1), ['jumlah' => 2])
+            ->assertSessionHas('cart', [1 => 2]);
+        $this->get(route('siswa.dashboard'))
+            ->assertOk()
+            ->assertSee('Nasi Goreng');
+
+        $this->post(route('siswa.checkout'))
+            ->assertRedirect(route('siswa.dashboard'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('pesanan', [
+            'user_id' => 2,
+            'menu_id' => 1,
+            'jumlah' => 2,
+            'total_harga' => 30000,
+            'status' => 'Menunggu Konfirmasi',
+        ]);
+        $this->assertFalse(session()->has('cart'));
+    }
+
+    public function test_student_cannot_access_admin_menu_management(): void
+    {
+        $this->post(route('login.store'), [
+            'username' => 'budi_siswa',
+            'password' => '123',
+        ]);
+
+        $this->get(route('admin.menus'))->assertForbidden();
+        $this->post(route('admin.menus.store'), [
+            'nama_menu' => 'Terlarang',
+            'harga' => 1000,
+            'kategori' => 'Makanan',
+        ])->assertForbidden();
     }
 }

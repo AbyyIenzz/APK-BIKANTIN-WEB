@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SiswaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check()
@@ -28,9 +30,24 @@ Route::middleware('auth')
     ->name('dashboard');
 
 Route::middleware(['auth', 'role:admin'])
-    ->get('/admin/dashboard', AdminDashboardController::class)
-    ->name('admin.dashboard');
+    ->prefix('/admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
+        Route::get('/menu', [AdminController::class, 'menus'])->name('menus');
+        Route::post('/menu', [AdminController::class, 'storeMenu'])->name('menus.store');
+        Route::put('/menu/{menuId}', [AdminController::class, 'updateMenu'])->whereNumber('menuId')->name('menus.update');
+        Route::delete('/menu/{menuId}', [AdminController::class, 'destroyMenu'])->whereNumber('menuId')->name('menus.destroy');
+        Route::patch('/pesanan/{orderId}/status', [AdminController::class, 'updateOrderStatus'])->whereNumber('orderId')->name('orders.status');
+    });
 
 Route::middleware(['auth', 'role:siswa'])
-    ->get('/siswa/dashboard', fn () => view('siswa.dashboard'))
-    ->name('siswa.dashboard');
+    ->prefix('/siswa')
+    ->name('siswa.')
+    ->group(function (): void {
+        Route::get('/dashboard', [SiswaController::class, 'dashboard'])->name('dashboard');
+        Route::post('/keranjang/{menuId}', [SiswaController::class, 'addToCart'])->whereNumber('menuId')->name('cart.add');
+        Route::put('/keranjang/{menuId}', [SiswaController::class, 'updateCart'])->whereNumber('menuId')->name('cart.update');
+        Route::delete('/keranjang/{menuId}', [SiswaController::class, 'removeFromCart'])->whereNumber('menuId')->name('cart.remove');
+        Route::post('/checkout', [SiswaController::class, 'checkout'])->name('checkout');
+    });
