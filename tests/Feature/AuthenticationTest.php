@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -16,12 +16,28 @@ class AuthenticationTest extends TestCase
     {
         parent::setUp();
 
+        Schema::dropIfExists('pesanan');
+        Schema::dropIfExists('menu');
         Schema::dropIfExists('users');
         Schema::create('users', function (Blueprint $table): void {
             $table->increments('id');
             $table->string('username', 50);
             $table->string('password', 50);
             $table->enum('role', ['admin', 'siswa']);
+        });
+        Schema::create('menu', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('nama_menu', 100);
+            $table->integer('harga');
+            $table->string('kategori', 50);
+        });
+        Schema::create('pesanan', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->integer('user_id');
+            $table->integer('menu_id');
+            $table->integer('jumlah');
+            $table->integer('total_harga');
+            $table->string('status', 100)->nullable()->default('Menunggu Konfirmasi');
         });
 
         DB::table('users')->insert([

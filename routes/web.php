@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,7 +28,7 @@ Route::middleware('auth')
     ->name('dashboard');
 
 Route::middleware(['auth', 'role:admin'])
-    ->get('/admin/dashboard', fn () => view('admin.dashboard'))
+    ->get('/admin/dashboard', AdminDashboardController::class)
     ->name('admin.dashboard');
 
 Route::middleware(['auth', 'role:siswa'])
